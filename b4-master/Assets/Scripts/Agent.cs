@@ -181,7 +181,7 @@ public class Agent : MonoBehaviour
             //Growing Spiral
             case 2:
                 Debug.Log("Mode 2");
-                force = CalculateSpiralForce(spinSpeed: 5, timeToGrowth: 2);
+                force = CalculateSpiralForce(spinSpeed: 5, timeToGrowth: 1.5f);
                 break;
             //Leader Following
             case 3:
@@ -196,7 +196,7 @@ public class Agent : MonoBehaviour
             //Part one
             default:
             Debug.Log("Part one");
-                force = CalculateGoalForce(maxSpeed: 5) + CalculateAgentForce() + CalculateWallForce();
+                force = CalculateGoalForce(maxSpeed: 2) + CalculateAgentForce() + CalculateWallForce();
                 break;
         }
 
@@ -341,7 +341,7 @@ public class Agent : MonoBehaviour
     private Vector3 CalculateSpiralForce(float spinSpeed, float timeToGrowth)
     {
         var spiralForce = Vector3.zero;
-        var otherForce = CalculateAgentForce() + CalculateWallForce();
+        var otherForce = CalculateAgentForce() + 1000 * CalculateWallForce();
         var goalForce = CalculateGoalForce(maxSpeed: 5);
         if (path.Count == 0)
         {
