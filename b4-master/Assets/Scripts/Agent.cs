@@ -11,11 +11,12 @@ public class Agent : MonoBehaviour
     public float mass;
     public float perceptionRadius;
     public const float k = 1.2f * 100000f;
+    public float rank;
     /* Mode
     1 = Pursue and Evade
     2 = Growing Spiral
     3 = Leader Following
-    4 = Crowd Following
+    4 = Queueing
     other number = Normal Mode for Part one */
     private int Mode;
     private List<Vector3> path;
@@ -29,15 +30,18 @@ public class Agent : MonoBehaviour
     void Start()
     {
         //set the mode
-        Mode = 3;
+        Mode = 0;
         path = new List<Vector3>();
         nma = GetComponent<NavMeshAgent>();
         rb = GetComponent<Rigidbody>();
+
+        rank = (Vector3.zero - transform.position).magnitude;
 
         gameObject.transform.localScale = new Vector3(2 * radius, 1, 2 * radius);
         nma.radius = radius;
         rb.mass = mass;
         GetComponent<SphereCollider>().radius = perceptionRadius / 2;
+
     }
 
     private void Update()
@@ -73,9 +77,17 @@ public class Agent : MonoBehaviour
                     temp.material.SetColor("_Color", Color.yellow);
                 }
                 break;
-            //Crowd Following
+            //Quene
             case 4:
                 Debug.Log("Mode 4 *");
+                gameObject.tag = "Player";
+                if(count < 500) {
+                    Debug.Log(count);
+                    if (path.Count != 0)
+                    {
+                        rank = (path[0] - transform.position).magnitude;
+                    }
+                }
                 break;
             //Part one
             default:
@@ -176,10 +188,10 @@ public class Agent : MonoBehaviour
                 Debug.Log("Mode 3");
                 force = CalculateLeaderForce();
                 break;
-            //Crowd Following
+            //Queueing
             case 4:
                 Debug.Log("Mode 4");
-                force = CalculateCrowdForce();
+                force = CalculateQueneForce(maxSpeed: 2);
                 break;
             //Part one
             default:
@@ -368,33 +380,44 @@ public class Agent : MonoBehaviour
         }
         else
         {
+
+            var destination = Vector3.zero;
+            if (path.Count != 0)
+            {
+                destination = path[0];
+            }
+            var target = closestTag("Player").transform.position;
+            float angle = Vector3.SignedAngle(target, transform.position, destination - closestTag("Player").transform.position);
+
             var goalDirection = (closestTag("Player").transform.position - transform.position).normalized;
             var prefForce = (((goalDirection * Mathf.Min(goalDirection.magnitude, 1)) - rb.velocity) / Parameters.T);
             var leadForce = prefForce + CalculateAgentForce() + CalculateWallForce();
             var force = leadForce.normalized * Mathf.Min(leadForce.magnitude, Parameters.maxSpeed);
 
-            //
-            if (path.Count != 0)
+            Debug.Log(angle);
+            //Move Out
+            if((destination - target).magnitude > (destination - transform.position).magnitude)
             {
-                if((path[0] - closestTag("Player").transform.position).magnitude > (path[0] - transform.position).magnitude)
+                var tempL = Vector3.zero;
+                if (angle >= 0f)
                 {
-                    var tempL = Vector3.zero;
-                    if ((path[0] - closestTag("Player").transform.position).x > (transform.position - closestTag("Player").transform.position).x)
-                    {
-                        tempL = closestTag("Player").transform.position - transform.position;
-                    }
-                    else
-                    {
-                        tempL = -closestTag("Player").transform.position - transform.position;
-                    }
-                    //var tempL = (closestTag("Player").transform.position - path[0]) - transform.position;
-
-
-                    var tangentL = Vector3.Cross(Vector3.up, tempL);
-                    var desiredVelL = 5 * tangentL.normalized * Mathf.Min(tangentL.magnitude, 5);
-                    var actualVelocityL = rb.velocity;
-                    force += mass * (desiredVelL - 10 * actualVelocityL) / Parameters.T + CalculateGoalForce(maxSpeed: 5);
+                    tempL = closestTag("Player").transform.position - transform.position;
                 }
+                else if (angle < 0f)
+                {
+                    tempL = -(closestTag("Player").transform.position - transform.position);
+                }
+
+
+                var tangentL = Vector3.Cross(Vector3.up, tempL);
+                var desiredVelL = 5 * tangentL.normalized * Mathf.Min(tangentL.magnitude, 5);
+
+                var temp = target - transform.position;
+                var desiredVel = temp.normalized * Mathf.Min(temp.magnitude, 5);
+                var actualVelocity = rb.velocity;
+                var tagForce = mass * (desiredVel - actualVelocity) / Parameters.T;
+
+                force += mass * (desiredVelL - 10 * actualVelocity) / Parameters.T + 2 * tagForce;
             }
             if (force != Vector3.zero)
             {
@@ -407,27 +430,79 @@ public class Agent : MonoBehaviour
         }
     }
 
-    //Crowd Following Mode
-    private Vector3 CalculateCrowdForce()
+    //Quene Following Mode
+    private Vector3 CalculateQueneForce(float maxSpeed)
     {
-        var panicParameter = 0.7f;
-        var goalDirection = ((1 - panicParameter) * (path[0] - transform.position));
-
-        var neighborvel = Vector3.zero;
-        foreach (var n in perceivedNeighbors)
+        var target = Vector3.zero;
+        if (closestDestTag("Player") == null)
         {
-            neighborvel += ((path[0] - transform.position) * Mathf.Min((path[0] - transform.position).magnitude, 1));
+            if (path.Count != 0)
+            {
+                target = path[0];
+            }           
         }
+        else {
+            target = closestDestTag("Player").transform.position;
+        }
+        var dir = (transform.position - target).normalized;
+        float x = 0;
+        float z = 0;
+        if (dir.z > 0)
+        {
+            if (dir.x < 0)
+            {
+                x = -0.3f;
+                z = 0.3f;
+            }
+            else if (dir.x > 0)
+            {
+                x = 0.3f;
+                z = 0.3f;
+            }
+            else
+            {
+                z = 0.3f;
+            }
+        }
+        else if (dir.z < 0)
+        {
+            if (dir.x < 0)
+            {
+                x = -0.3f;
+                z = -0.3f;
+            }
+            else if (dir.x > 0)
+            {
+                x = 0.3f;
+                z = -0.3f;
+            }
+            else
+            {
+                z = -0.3f;
+            }
+        }
+        else if (dir.z == 0)
+        {
+            if (dir.x < 0)
+            {
+                x = -0.3f;
+            }
+            else if (dir.x > 0)
+            {
+                x = 0.3f;
+            }
+        }
+        target = new Vector3(target.x + x, 0, target.z + z);
 
-        neighborvel = neighborvel / perceivedNeighbors.Count;
-        goalDirection = (goalDirection + panicParameter * neighborvel).normalized;
-
-        var prefForce = (((goalDirection * Mathf.Min(goalDirection.magnitude, 1)) - rb.velocity) / Parameters.T);
+        var temp = target - transform.position;
+        var desiredVel = temp.normalized * Mathf.Min(temp.magnitude, maxSpeed);
+        var actualVelocity = rb.velocity;
+        var prefForce = mass * (desiredVel - actualVelocity) / Parameters.T;
         var force = prefForce + CalculateAgentForce() + CalculateWallForce();
 
         if (force != Vector3.zero)
         {
-            return force.normalized * Mathf.Min(force.magnitude, Parameters.maxSpeed);
+            return force;
         }
         else
         {
@@ -465,6 +540,27 @@ public class Agent : MonoBehaviour
         }
         return closest;
     }
+
+    public GameObject closestDestTag(string tag)
+    {
+        GameObject[] neighbor;
+        neighbor = GameObject.FindGameObjectsWithTag(tag);
+        GameObject closest = null;
+        float distance = Mathf.Infinity;
+        Vector3 position = transform.position;
+        foreach (GameObject n in neighbor)
+        {
+            Vector3 diff = n.transform.position - position;
+            float dis = diff.sqrMagnitude;
+            if (dis < distance && n.GetComponent<Agent>().rank < rank)
+            {
+                closest = n;
+                distance = dis;
+            }
+        }
+        return closest;
+    }
+
 
     public void OnTriggerEnter(Collider other)
     {

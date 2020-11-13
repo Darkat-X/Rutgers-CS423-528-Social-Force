@@ -69,6 +69,7 @@
     <Compile Include="Assets\Scripts\Parameters.cs" />
     <Compile Include="Assets\Scripts\SlidingFrictionForceVisualizer.cs" />
     <Compile Include="Assets\Scripts\WallManager.cs" />
+    <Compile Include="Assets\Sort.cs" />
     <Reference Include="Unity.Timeline.Editor">
       <HintPath>C:/Users/User/Desktop/b4-master/Library/ScriptAssemblies/Unity.Timeline.Editor.dll</HintPath>
     </Reference>

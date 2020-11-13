@@ -39,7 +39,7 @@ public class AgentManager : MonoBehaviour
             var agentScript = agent.GetComponent<Agent>();
             agentScript.radius = 0.3f;// Random.Range(0.2f, 0.6f);
             agentScript.mass = 1;
-            agentScript.perceptionRadius = 300;
+            agentScript.perceptionRadius = 3;
 
             agents.Add(agentScript);
             agentsObjs.Add(agent, agentScript);
